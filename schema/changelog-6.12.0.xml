@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd"
+  logicalFilePath="changelog-6.12.0">
+
+  <!-- ====================================================================== -->
+  <!-- Multi-Tenant Support: Fase 1                                           -->
+  <!-- Implementa tenant_id por fila en tablas principales                    -->
+  <!-- Ver PLAN.MD y DECISIONS.md para contexto completo                      -->
+  <!-- ====================================================================== -->
+
+  <!-- mt-001: Crear tabla tc_tenants -->
+  <changeSet id="mt-001-tenants" author="junie">
+    <comment>Crear tabla tc_tenants para multi-tenancy</comment>
+    
+    <createTable tableName="tc_tenants">
+      <column name="id" type="INT" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false" />
+      </column>
+      <column name="name" type="VARCHAR(255)">
+        <constraints nullable="false" />
+      </column>
+      <column name="slug" type="VARCHAR(64)">
+        <constraints nullable="false" unique="true" />
+      </column>
+      <column name="status" type="SMALLINT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+      <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false" />
+      </column>
+      <column name="attributes" type="VARCHAR(4000)" />
+    </createTable>
+
+    <createIndex tableName="tc_tenants" indexName="idx_tenants_slug">
+      <column name="slug" />
+    </createIndex>
+
+    <createIndex tableName="tc_tenants" indexName="idx_tenants_status">
+      <column name="status" />
+    </createIndex>
+
+    <!-- Insertar tenant por defecto para datos existentes -->
+    <insert tableName="tc_tenants">
+      <column name="id" valueNumeric="1" />
+      <column name="name" value="Default Tenant" />
+      <column name="slug" value="default" />
+      <column name="status" valueNumeric="1" />
+    </insert>
+
+    <rollback>
+      <dropTable tableName="tc_tenants" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-002: Añadir tenant_id a tc_users -->
+  <changeSet id="mt-002-users-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_users con FK y índice</comment>
+    
+    <addColumn tableName="tc_users">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_users" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_users_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_users" indexName="idx_users_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_users" constraintName="fk_users_tenant_id" />
+      <dropIndex tableName="tc_users" indexName="idx_users_tenant_id" />
+      <dropColumn tableName="tc_users" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-003: Añadir tenant_id a tc_devices -->
+  <changeSet id="mt-003-devices-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_devices con FK y índice</comment>
+    
+    <addColumn tableName="tc_devices">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_devices" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_devices_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_devices" indexName="idx_devices_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <createIndex tableName="tc_devices" indexName="idx_devices_tenant_name">
+      <column name="tenant_id" />
+      <column name="name" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_devices" constraintName="fk_devices_tenant_id" />
+      <dropIndex tableName="tc_devices" indexName="idx_devices_tenant_name" />
+      <dropIndex tableName="tc_devices" indexName="idx_devices_tenant_id" />
+      <dropColumn tableName="tc_devices" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-004: Añadir tenant_id a tc_groups -->
+  <changeSet id="mt-004-groups-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_groups con FK y índice</comment>
+    
+    <addColumn tableName="tc_groups">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_groups" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_groups_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_groups" indexName="idx_groups_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_groups" constraintName="fk_groups_tenant_id" />
+      <dropIndex tableName="tc_groups" indexName="idx_groups_tenant_id" />
+      <dropColumn tableName="tc_groups" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-005: Añadir tenant_id a tc_geofences -->
+  <changeSet id="mt-005-geofences-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_geofences con FK y índice</comment>
+    
+    <addColumn tableName="tc_geofences">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_geofences" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_geofences_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_geofences" indexName="idx_geofences_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_geofences" constraintName="fk_geofences_tenant_id" />
+      <dropIndex tableName="tc_geofences" indexName="idx_geofences_tenant_id" />
+      <dropColumn tableName="tc_geofences" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-006: Añadir tenant_id a tc_drivers -->
+  <changeSet id="mt-006-drivers-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_drivers con FK y índice</comment>
+    
+    <addColumn tableName="tc_drivers">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_drivers" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_drivers_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_drivers" indexName="idx_drivers_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_drivers" constraintName="fk_drivers_tenant_id" />
+      <dropIndex tableName="tc_drivers" indexName="idx_drivers_tenant_id" />
+      <dropColumn tableName="tc_drivers" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-007: Añadir tenant_id a tc_calendars -->
+  <changeSet id="mt-007-calendars-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_calendars con FK y índice</comment>
+    
+    <addColumn tableName="tc_calendars">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_calendars" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_calendars_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_calendars" indexName="idx_calendars_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_calendars" constraintName="fk_calendars_tenant_id" />
+      <dropIndex tableName="tc_calendars" indexName="idx_calendars_tenant_id" />
+      <dropColumn tableName="tc_calendars" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-008: Añadir tenant_id a tc_attributes (computed attributes) -->
+  <changeSet id="mt-008-attributes-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_attributes con FK y índice</comment>
+    
+    <addColumn tableName="tc_attributes">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_attributes" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_attributes_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_attributes" indexName="idx_attributes_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_attributes" constraintName="fk_attributes_tenant_id" />
+      <dropIndex tableName="tc_attributes" indexName="idx_attributes_tenant_id" />
+      <dropColumn tableName="tc_attributes" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-009: Añadir tenant_id a tc_notifications -->
+  <changeSet id="mt-009-notifications-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_notifications con FK y índice</comment>
+    
+    <addColumn tableName="tc_notifications">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_notifications" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_notifications_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_notifications" indexName="idx_notifications_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_notifications" constraintName="fk_notifications_tenant_id" />
+      <dropIndex tableName="tc_notifications" indexName="idx_notifications_tenant_id" />
+      <dropColumn tableName="tc_notifications" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-010: Añadir tenant_id a tc_commands (saved commands) -->
+  <changeSet id="mt-010-commands-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_commands con FK y índice</comment>
+    
+    <addColumn tableName="tc_commands">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_commands" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_commands_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_commands" indexName="idx_commands_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_commands" constraintName="fk_commands_tenant_id" />
+      <dropIndex tableName="tc_commands" indexName="idx_commands_tenant_id" />
+      <dropColumn tableName="tc_commands" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-011: Añadir tenant_id a tc_maintenances -->
+  <changeSet id="mt-011-maintenances-tenant" author="junie">
+    <comment>Añadir tenant_id a tc_maintenances con FK y índice</comment>
+    
+    <addColumn tableName="tc_maintenances">
+      <column name="tenant_id" type="INT" defaultValueNumeric="1">
+        <constraints nullable="false" />
+      </column>
+    </addColumn>
+
+    <addForeignKeyConstraint 
+      baseTableName="tc_maintenances" 
+      baseColumnNames="tenant_id"
+      constraintName="fk_maintenances_tenant_id"
+      referencedTableName="tc_tenants" 
+      referencedColumnNames="id"
+      onDelete="CASCADE" />
+
+    <createIndex tableName="tc_maintenances" indexName="idx_maintenances_tenant_id">
+      <column name="tenant_id" />
+    </createIndex>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="tc_maintenances" constraintName="fk_maintenances_tenant_id" />
+      <dropIndex tableName="tc_maintenances" indexName="idx_maintenances_tenant_id" />
+      <dropColumn tableName="tc_maintenances" columnName="tenant_id" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-012: Modificar unicidad de email en tc_users para incluir tenant_id -->
+  <changeSet id="mt-012-users-unique-email" author="junie">
+    <comment>Cambiar unicidad de email a (tenant_id, email) en tc_users</comment>
+    
+    <dropUniqueConstraint tableName="tc_users" constraintName="tc_users_email_key" />
+    
+    <addUniqueConstraint 
+      tableName="tc_users" 
+      columnNames="tenant_id, email" 
+      constraintName="uk_users_tenant_email" />
+
+    <rollback>
+      <dropUniqueConstraint tableName="tc_users" constraintName="uk_users_tenant_email" />
+      <addUniqueConstraint tableName="tc_users" columnNames="email" constraintName="tc_users_email_key" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-013: Añadir índice único compuesto para login en tc_users -->
+  <changeSet id="mt-013-users-unique-login" author="junie">
+    <comment>Añadir unicidad (tenant_id, login) en tc_users para logins únicos por tenant</comment>
+    
+    <addUniqueConstraint 
+      tableName="tc_users" 
+      columnNames="tenant_id, login" 
+      constraintName="uk_users_tenant_login" />
+
+    <rollback>
+      <dropUniqueConstraint tableName="tc_users" constraintName="uk_users_tenant_login" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-014: Modificar unicidad de uniqueid en tc_drivers para incluir tenant_id -->
+  <changeSet id="mt-014-drivers-unique" author="junie">
+    <comment>Cambiar unicidad de uniqueid a (tenant_id, uniqueid) en tc_drivers</comment>
+    
+    <dropUniqueConstraint tableName="tc_drivers" constraintName="tc_drivers_uniqueid_key" />
+    
+    <addUniqueConstraint 
+      tableName="tc_drivers" 
+      columnNames="tenant_id, uniqueid" 
+      constraintName="uk_drivers_tenant_uniqueid" />
+
+    <rollback>
+      <dropUniqueConstraint tableName="tc_drivers" constraintName="uk_drivers_tenant_uniqueid" />
+      <addUniqueConstraint tableName="tc_drivers" columnNames="uniqueid" constraintName="tc_drivers_uniqueid_key" />
+    </rollback>
+  </changeSet>
+
+  <!-- mt-015: Añadir unicidades compuestas para nombres en tablas principales -->
+  <changeSet id="mt-015-unique-names" author="junie">
+    <comment>Añadir unicidades (tenant_id, name) para grupos, geofences, calendars</comment>
+    
+    <addUniqueConstraint 
+      tableName="tc_groups" 
+      columnNames="tenant_id, name" 
+      constraintName="uk_groups_tenant_name" />
+
+    <addUniqueConstraint 
+      tableName="tc_geofences" 
+      columnNames="tenant_id, name" 
+      constraintName="uk_geofences_tenant_name" />
+
+    <addUniqueConstraint 
+      tableName="tc_calendars" 
+      columnNames="tenant_id, name" 
+      constraintName="uk_calendars_tenant_name" />
+
+    <rollback>
+      <dropUniqueConstraint tableName="tc_calendars" constraintName="uk_calendars_tenant_name" />
+      <dropUniqueConstraint tableName="tc_geofences" constraintName="uk_geofences_tenant_name" />
+      <dropUniqueConstraint tableName="tc_groups" constraintName="uk_groups_tenant_name" />
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

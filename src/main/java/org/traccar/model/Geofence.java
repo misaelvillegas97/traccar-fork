@@ -26,7 +26,19 @@ import org.traccar.storage.StorageName;
 import java.text.ParseException;
 
 @StorageName("tc_geofences")
-public class Geofence extends ExtendedModel implements Schedulable {
+public class Geofence extends ExtendedModel implements Schedulable, TenantScoped {
+
+    private long tenantId;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+    }
 
     private long calendarId;
 

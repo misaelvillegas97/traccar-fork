@@ -22,7 +22,19 @@ import org.traccar.storage.StorageName;
 import java.util.Date;
 
 @StorageName("tc_devices")
-public class Device extends GroupedModel implements Disableable, Schedulable {
+public class Device extends GroupedModel implements Disableable, Schedulable, TenantScoped {
+
+    private long tenantId;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+    }
 
     private long calendarId;
 

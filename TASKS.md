@@ -22,20 +22,20 @@ Este documento desglosa PLAN.MD en tareas accionables numeradas por punto (1.1, 
 
 4. Impacto por capa
 4.1 Esquema (Liquibase)
-- [ ] 4.1.1 Crear mt-001-tenants.
-- [ ] 4.1.2 Crear mt-002-* para tenant_id en tablas principales.
-- [ ] 4.1.3 Crear changeSets para tablas de enlace.
-- [ ] 4.1.4 Backfill a TENANT_DEFAULT.
-- [ ] 4.1.5 Unicidades compuestas por tenant.
-- [ ] 4.1.6 Índices por tenant_id y compuestos.
-- [ ] 4.1.7 Scripts de rollback mt-*.
-- [ ] 4.1.8 Probar migraciones en staging.
+- [x] 4.1.1 Crear mt-001-tenants.
+- [x] 4.1.2 Crear mt-002-* para tenant_id en tablas principales.
+- [x] 4.1.3 Crear changeSets para tablas de enlace.
+- [x] 4.1.4 Backfill a TENANT_DEFAULT.
+- [x] 4.1.5 Unicidades compuestas por tenant.
+- [x] 4.1.6 Índices por tenant_id y compuestos.
+- [x] 4.1.7 Scripts de rollback mt-*.
+- [x] 4.1.8 Probar migraciones en staging.
 
 4.2 Modelo de dominio
-- [ ] 4.2.1 Añadir tenantId a modelos raíz.
-- [ ] 4.2.2 Crear interfaz TenantScoped y aplicarla.
-- [ ] 4.2.3 Ajustar constructores/getters/hashCode/JSON.
-- [ ] 4.2.4 Actualizar DTOs/mappers.
+- [x] 4.2.1 Añadir tenantId a modelos raíz.
+- [x] 4.2.2 Crear interfaz TenantScoped y aplicarla.
+- [x] 4.2.3 Ajustar constructores/getters/hashCode/JSON.
+- [x] 4.2.4 Actualizar DTOs/mappers.
 
 4.3 Almacenamiento
 - [ ] 4.3.1 Implementar TenantContext (set/get/clear).
@@ -85,9 +85,9 @@ Este documento desglosa PLAN.MD en tareas accionables numeradas por punto (1.1, 
 - [ ] 4.11.4 Dashboards y alertas por tenant.
 
 5. Fases de implementación
-- [ ] 5.1 Preparación: cerrar decisiones, validar Timescale, feature flag.
-- [ ] 5.2 Esquema Fase 1: mt-001, mt-002-*, mt-003; migrar dev/staging; backfill.
-- [ ] 5.3 Modelo: aplicar cambios e interfaz TenantScoped.
+- [x] 5.1 Preparación: cerrar decisiones, validar Timescale, feature flag.
+- [x] 5.2 Esquema Fase 1: mt-001, mt-002-*, mt-003; migrar dev/staging; backfill.
+- [x] 5.3 Modelo: aplicar cambios e interfaz TenantScoped.
 - [ ] 5.4 Seguridad/contexto: JWT + filtro TenantContext; extender permisos.
 - [ ] 5.5 Storage: filtro automático e inserts; tests.
 - [ ] 5.6 Cachés: particionar y testear.
@@ -99,8 +99,8 @@ Este documento desglosa PLAN.MD en tareas accionables numeradas por punto (1.1, 
 - [ ] 5.12 Optimizacion Fase 2: tenant_id en positions/events si aporta valor.
 
 6. Rutas y archivos
-- [ ] 6.1 Liquibase: schema/changelog-*.xml con mt-* y orden maestro.
-- [ ] 6.2 Modelos: src/main/java/org/traccar/model/*.java.
+- [x] 6.1 Liquibase: schema/changelog-*.xml con mt-* y orden maestro.
+- [x] 6.2 Modelos: src/main/java/org/traccar/model/*.java.
 - [ ] 6.3 Permisos: src/main/java/org/traccar/api/security/PermissionsService.java.
 - [ ] 6.4 Storage: src/main/java/org/traccar/storage/*.
 - [ ] 6.5 Caches: src/main/java/org/traccar/database/DeviceLookupService.java; src/main/java/org/traccar/storage/MemoryStorage.java.

@@ -18,7 +18,19 @@ package org.traccar.model;
 import org.traccar.storage.StorageName;
 
 @StorageName("tc_groups")
-public class Group extends GroupedModel {
+public class Group extends GroupedModel implements TenantScoped {
+
+    private long tenantId;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+    }
 
     private String name;
 

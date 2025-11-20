@@ -19,7 +19,19 @@ package org.traccar.model;
 import org.traccar.storage.StorageName;
 
 @StorageName("tc_maintenances")
-public class Maintenance extends ExtendedModel {
+public class Maintenance extends ExtendedModel implements TenantScoped {
+
+    private long tenantId;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+    }
 
     private String name;
 

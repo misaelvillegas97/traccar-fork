@@ -19,7 +19,19 @@ package org.traccar.model;
 import org.traccar.storage.StorageName;
 
 @StorageName("tc_attributes")
-public class Attribute extends BaseModel {
+public class Attribute extends BaseModel implements TenantScoped {
+
+    private long tenantId;
+
+    @Override
+    public long getTenantId() {
+        return tenantId;
+    }
+
+    @Override
+    public void setTenantId(long tenantId) {
+        this.tenantId = tenantId;
+    }
 
     private String description;
 
