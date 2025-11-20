@@ -22,6 +22,7 @@ import org.traccar.model.Device;
 import org.traccar.model.Group;
 import org.traccar.model.GroupedModel;
 import org.traccar.model.Permission;
+import org.traccar.model.TenantScoped;
 import org.traccar.storage.query.Columns;
 import org.traccar.storage.query.Condition;
 import org.traccar.storage.query.Order;
@@ -57,6 +58,48 @@ public class DatabaseStorage extends Storage {
         }
     }
 
+    /**
+     * Añade filtro automático por tenant_id para entidades TenantScoped.
+     * <p>
+     * Si la clase implementa TenantScoped y hay un tenantId en el contexto actual,
+     * añade automáticamente la condición "tenant_id = ?" a la consulta.
+     * El filtro se bypasea si el usuario es SUPER_ADMIN (TenantContext.isBypassEnabled()).
+     * </p>
+     * 
+     * @param clazz Clase de la entidad a consultar
+     * @param existingCondition Condición existente (puede ser null)
+     * @return Condición combinada con filtro de tenant si aplica, o la condición original
+     */
+    private Condition addTenantFilter(Class<?> clazz, Condition existingCondition) {
+        // Verificar si la clase implementa TenantScoped
+        if (!TenantScoped.class.isAssignableFrom(clazz)) {
+            return existingCondition;
+        }
+
+        // Verificar si hay bypass activo (SUPER_ADMIN)
+        if (TenantContext.isBypassEnabled()) {
+            return existingCondition;
+        }
+
+        // Obtener tenant_id del contexto
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            // No hay tenant en contexto, no aplicar filtro
+            // (esto puede ocurrir en operaciones internas o migraciones)
+            return existingCondition;
+        }
+
+        // Crear condición tenant_id = ?
+        Condition tenantCondition = new Condition.Equals("tenantId", tenantId);
+
+        // Combinar con condición existente usando AND
+        if (existingCondition != null) {
+            return new Condition.And(tenantCondition, existingCondition);
+        } else {
+            return tenantCondition;
+        }
+    }
+
     @Override
     public <T> List<T> getObjects(Class<T> clazz, Request request) throws StorageException {
         try (var objects = getObjectsStream(clazz, request)) {
@@ -66,6 +109,9 @@ public class DatabaseStorage extends Storage {
 
     @Override
     public <T> Stream<T> getObjectsStream(Class<T> clazz, Request request) throws StorageException {
+        // Aplicar filtro automático por tenant_id
+        Condition filteredCondition = addTenantFilter(clazz, request.getCondition());
+        
         StringBuilder query = new StringBuilder("SELECT ");
         if (request.getColumns() instanceof Columns.All) {
             query.append('*');
@@ -73,11 +119,11 @@ public class DatabaseStorage extends Storage {
             query.append(formatColumns(request.getColumns().getColumns(clazz, "set"), c -> c));
         }
         query.append(" FROM ").append(getStorageName(clazz));
-        query.append(formatCondition(request.getCondition()));
+        query.append(formatCondition(filteredCondition));
         query.append(formatOrder(request.getOrder()));
         try {
             QueryBuilder builder = QueryBuilder.create(config, dataSource, objectMapper, query.toString());
-            List<Object> values = getConditionVariables(request.getCondition());
+            List<Object> values = getConditionVariables(filteredCondition);
             for (int index = 0; index < values.size(); index++) {
                 builder.setValue(index, values.get(index));
             }
@@ -89,6 +135,15 @@ public class DatabaseStorage extends Storage {
 
     @Override
     public <T> long addObject(T entity, Request request) throws StorageException {
+        // Auto-setear tenant_id para entidades TenantScoped
+        if (entity instanceof TenantScoped tenantScoped) {
+            Long tenantId = TenantContext.getTenantId();
+            if (tenantId != null && tenantScoped.getTenantId() == 0) {
+                // Solo setear si no está ya establecido
+                tenantScoped.setTenantId(tenantId);
+            }
+        }
+        
         List<String> columns = request.getColumns().getColumns(entity.getClass(), "get");
         StringBuilder query = new StringBuilder("INSERT INTO ");
         query.append(getStorageName(entity.getClass()));
@@ -108,16 +163,19 @@ public class DatabaseStorage extends Storage {
 
     @Override
     public <T> void updateObject(T entity, Request request) throws StorageException {
+        // Aplicar filtro automático por tenant_id
+        Condition filteredCondition = addTenantFilter(entity.getClass(), request.getCondition());
+        
         List<String> columns = request.getColumns().getColumns(entity.getClass(), "get");
         StringBuilder query = new StringBuilder("UPDATE ");
         query.append(getStorageName(entity.getClass()));
         query.append(" SET ");
         query.append(formatColumns(columns, c -> c + " = ?"));
-        query.append(formatCondition(request.getCondition()));
+        query.append(formatCondition(filteredCondition));
         try {
             QueryBuilder builder = QueryBuilder.create(config, dataSource, objectMapper, query.toString());
             builder.setObject(entity, columns);
-            List<Object> values = getConditionVariables(request.getCondition());
+            List<Object> values = getConditionVariables(filteredCondition);
             for (int index = 0; index < values.size(); index++) {
                 builder.setValue(columns.size() + index, values.get(index));
             }
@@ -129,12 +187,15 @@ public class DatabaseStorage extends Storage {
 
     @Override
     public void removeObject(Class<?> clazz, Request request) throws StorageException {
+        // Aplicar filtro automático por tenant_id
+        Condition filteredCondition = addTenantFilter(clazz, request.getCondition());
+        
         StringBuilder query = new StringBuilder("DELETE FROM ");
         query.append(getStorageName(clazz));
-        query.append(formatCondition(request.getCondition()));
+        query.append(formatCondition(filteredCondition));
         try {
             QueryBuilder builder = QueryBuilder.create(config, dataSource, objectMapper, query.toString());
-            List<Object> values = getConditionVariables(request.getCondition());
+            List<Object> values = getConditionVariables(filteredCondition);
             for (int index = 0; index < values.size(); index++) {
                 builder.setValue(index, values.get(index));
             }

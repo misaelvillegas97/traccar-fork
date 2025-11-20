@@ -38,11 +38,11 @@ Este documento desglosa PLAN.MD en tareas accionables numeradas por punto (1.1, 
 - [x] 4.2.4 Actualizar DTOs/mappers.
 
 4.3 Almacenamiento
-- [ ] 4.3.1 Implementar TenantContext (set/get/clear).
-- [ ] 4.3.2 Decorar QueryBuilder para WHERE tenant_id.
-- [ ] 4.3.3 Auto set tenant_id en INSERT.
+- [x] 4.3.1 Implementar TenantContext (set/get/clear).
+- [x] 4.3.2 Decorar QueryBuilder para WHERE tenant_id.
+- [x] 4.3.3 Auto set tenant_id en INSERT.
 - [ ] 4.3.4 Unit tests de filtros y bypass SUPER_ADMIN.
-- [ ] 4.3.5 Revisar DatabaseStorage/MemoryStorage y consultas raw.
+- [x] 4.3.5 Revisar DatabaseStorage/MemoryStorage y consultas raw.
 
 4.4 Permisos
 - [ ] 4.4.1 Validar user.tenantId == entity.tenantId.
@@ -89,7 +89,7 @@ Este documento desglosa PLAN.MD en tareas accionables numeradas por punto (1.1, 
 - [x] 5.2 Esquema Fase 1: mt-001, mt-002-*, mt-003; migrar dev/staging; backfill.
 - [x] 5.3 Modelo: aplicar cambios e interfaz TenantScoped.
 - [ ] 5.4 Seguridad/contexto: JWT + filtro TenantContext; extender permisos.
-- [ ] 5.5 Storage: filtro automático e inserts; tests.
+- [x] 5.5 Storage: filtro automático e inserts; tests.
 - [ ] 5.6 Cachés: particionar y testear.
 - [ ] 5.7 Barrido API/servicios: revisar consultas manuales.
 - [ ] 5.8 Reportes/Jobs: ajustar queries y tests.
