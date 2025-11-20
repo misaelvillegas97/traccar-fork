@@ -23,14 +23,15 @@
       SELECT create_hypertable(
         'tc_actions',
         'actiontime',
-        migrate_data => TRUE
+        migrate_data => TRUE,
+        if_not_exists => TRUE
       );
 
       CREATE INDEX IF NOT EXISTS tc_actions_id_idx ON tc_actions(id);
 
-      PERFORM add_retention_policy('tc_actions', INTERVAL '1 year');
-      PERFORM add_retention_policy('tc_positions', INTERVAL '1 year');
-      PERFORM add_retention_policy('tc_events', INTERVAL '1 year');
+      SELECT add_retention_policy('tc_actions', INTERVAL '1 year', if_not_exists => TRUE);
+      SELECT add_retention_policy('tc_positions', INTERVAL '1 year', if_not_exists => TRUE);
+      SELECT add_retention_policy('tc_events', INTERVAL '1 year', if_not_exists => TRUE);
     </sql>
 
   </changeSet>
