@@ -1,21 +1,46 @@
-FROM alpine AS package
-ARG VERSION
-COPY installers/traccar-other-$VERSION.zip /tmp/traccar.zip
-RUN unzip -qo /tmp/traccar.zip -d /traccar
+# Etapa 1: Build del código fuente
+FROM eclipse-temurin:21-alpine AS build
 
+# Instalar dependencias necesarias (alpine minimal)
+RUN apk add --no-cache git unzip bash
+
+# Variables de entorno
+ARG VERSION_BRANCH=master
+ENV TRACCAR_HOME=/opt/traccar
+
+# Clonar el repositorio completo (incluye submódulos web)
+WORKDIR /src
+RUN git clone --recursive https://github.com/traccar/traccar.git . \
+    && git checkout ${VERSION_BRANCH}
+
+# Construir el servidor
+RUN ./gradlew assemble \
+    && ls -l build/libs/
+
+# Etapa 2: Preparar la imagen final
+FROM alpine:3.22 AS runtime
+ENV CONFIG_USE_ENVIRONMENT_VARIABLES=true
+WORKDIR /opt/traccar
+
+# Copiar artefactos:
+COPY --from=build /src/build/libs/tracker-server.jar ./tracker-server.jar
+COPY --from=build /src/web ./web
+COPY --from=build /src/conf ./conf
+
+# Copiar JRE mínimo
 FROM eclipse-temurin:21-alpine AS jdk
 RUN jlink --module-path $JAVA_HOME/jmods \
     --add-modules java.se,jdk.charsets,jdk.crypto.ec,jdk.unsupported \
     --strip-debug --no-header-files --no-man-pages --compress=2 --output /jre
 
-FROM alpine:3.22
-COPY --from=package /traccar /opt/traccar
+FROM runtime AS final
 COPY --from=jdk /jre /opt/traccar/jre
-WORKDIR /opt/traccar
 
-# Configurar variables de entorno por defecto
-ENV CONFIG_USE_ENVIRONMENT_VARIABLES=true
+# Variables de entorno default para base de datos
 ENV DATABASE_DRIVER=org.postgresql.Driver
+
+# Exponer puerto (si aplica)
+EXPOSE 8082
 
 ENTRYPOINT ["/opt/traccar/jre/bin/java"]
 CMD ["-jar", "tracker-server.jar", "conf/traccar-railway.xml"]
