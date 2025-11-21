@@ -6,14 +6,14 @@
 
     <!-- Server configuration -->
     <entry key='web.enable'>true</entry>
-    <entry key='web.port'>8082</entry>
+    <entry key='web.port'>${PORT:8082}</entry>
     <entry key='web.path'>./web</entry>
 
-    <!-- Database configuration -->
+    <!-- Database configuration using Railway variables -->
     <entry key='database.driver'>org.postgresql.Driver</entry>
-    <entry key='database.url'>jdbc:postgresql://localhost:5432/traccar</entry>
-    <entry key='database.user'>traccar</entry>
-    <entry key='database.password'>traccar</entry>
+    <entry key='database.url'>jdbc:postgresql://${Timescale.PGHOST}:${Timescale.PGPORT}/${Timescale.PGDATABASE}</entry>
+    <entry key='database.user'>${Timescale.PGUSER}</entry>
+    <entry key='database.password'>${Timescale.PGPASSWORD}</entry>
 
     <!-- Connection pool configuration -->
     <entry key='database.checkConnection'>SELECT 1</entry>
