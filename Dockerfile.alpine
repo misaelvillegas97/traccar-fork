@@ -1,46 +1,31 @@
-# Etapa 1: Build del código fuente
 FROM eclipse-temurin:21-alpine AS build
+WORKDIR /app
+COPY . .
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew && ./gradlew assemble && \
+    mkdir -p traccar-web/build
 
-# Instalar dependencias necesarias (alpine minimal)
-RUN apk add --no-cache git unzip bash
-
-# Variables de entorno
-ARG VERSION_BRANCH=master
-ENV TRACCAR_HOME=/opt/traccar
-
-# Clonar el repositorio completo (incluye submódulos web)
-WORKDIR /src
-RUN git clone --recursive https://github.com/traccar/traccar.git . \
-    && git checkout ${VERSION_BRANCH}
-
-# Construir el servidor
-RUN ./gradlew assemble \
-    && ls -l build/libs/
-
-# Etapa 2: Preparar la imagen final
-FROM alpine:3.22 AS runtime
-ENV CONFIG_USE_ENVIRONMENT_VARIABLES=true
-WORKDIR /opt/traccar
-
-# Copiar artefactos:
-COPY --from=build /src/build/libs/tracker-server.jar ./tracker-server.jar
-COPY --from=build /src/web ./web
-COPY --from=build /src/conf ./conf
-
-# Copiar JRE mínimo
 FROM eclipse-temurin:21-alpine AS jdk
 RUN jlink --module-path $JAVA_HOME/jmods \
     --add-modules java.se,jdk.charsets,jdk.crypto.ec,jdk.unsupported \
     --strip-debug --no-header-files --no-man-pages --compress=2 --output /jre
 
-FROM runtime AS final
+FROM alpine:3.22
+COPY --from=build /app/target/tracker-server.jar /opt/traccar/tracker-server.jar
+COPY --from=build /app/target/lib /opt/traccar/lib
+COPY --from=build /app/schema /opt/traccar/schema
+COPY --from=build /app/templates /opt/traccar/templates
+COPY --from=build /app/traccar-web/build /opt/traccar/web
+COPY --from=build /app/setup/traccar.xml /opt/traccar/conf/traccar.xml
 COPY --from=jdk /jre /opt/traccar/jre
 
-# Variables de entorno default para base de datos
+# Crear directorios necesarios
+RUN mkdir -p /opt/traccar/data /opt/traccar/logs
+
+WORKDIR /opt/traccar
+
+# Configurar variables de entorno por defecto
+ENV CONFIG_USE_ENVIRONMENT_VARIABLES=true
 ENV DATABASE_DRIVER=org.postgresql.Driver
 
-# Exponer puerto (si aplica)
-EXPOSE 8082
-
 ENTRYPOINT ["/opt/traccar/jre/bin/java"]
-CMD ["-jar", "tracker-server.jar", "conf/traccar-railway.xml"]
+CMD ["-jar", "tracker-server.jar", "conf/traccar.xml"]
