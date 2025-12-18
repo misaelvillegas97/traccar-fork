@@ -6,7 +6,7 @@
 
     <!-- Server configuration -->
     <entry key='web.enable'>true</entry>
-    <entry key='web.port'>${PORT:8082}</entry>
+    <entry key='web.port'>8082</entry>
     <entry key='web.path'>./web</entry>
 
     <!-- Database configuration using Railway variables -->
