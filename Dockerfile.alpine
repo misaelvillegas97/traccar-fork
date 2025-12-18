@@ -14,9 +14,10 @@ RUN chmod +x gradlew || true \
   && dos2unix gradlew || true
 
 RUN if [ -d /src/.git ]; then git submodule update --init --recursive; else echo "No .git in build context; skipping submodules"; fi
-RUN dos2unix $(find src -type f \( -name "*.java" -o -name "*.xml" -o -name "*.gradle" -o -name "*.properties" \))
-RUN /src/gradlew --no-daemon clean build -x test
 
+RUN dos2unix $(find /src -type f \( -name "*.java" -o -name "*.xml" -o -name "*.gradle" -o -name "*.properties" \) ) || true
+
+RUN /src/gradlew --no-daemon clean build -x test
 
 
 ############################
@@ -26,7 +27,6 @@ FROM node:22-alpine AS build-web
 WORKDIR /web
 
 RUN apk add --no-cache git
-
 RUN git clone --depth 1 https://github.com/misaelvillegas97/traccar-web.git ./traccar-web
 
 WORKDIR /web/traccar-web
@@ -35,7 +35,7 @@ RUN npm run build
 
 
 ############################
-# 3) runtime (1 solo OS final)
+# 3) runtime
 ############################
 FROM eclipse-temurin:21-jre
 WORKDIR /opt/traccar
@@ -47,9 +47,17 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 RUN mkdir -p /opt/traccar/jre/bin \
   && ln -sf ${JAVA_HOME}/bin/java /opt/traccar/jre/bin/java
 
+RUN mkdir -p /opt/traccar/conf
+
+# App + deps
 COPY --from=build-server /src/target/tracker-server.jar ./tracker-server.jar
 COPY --from=build-server /src/target/lib ./lib
 
+COPY --from=build-server /src/schema ./schema
+
+COPY --from=build-server /src/templates ./templates
+
+# Config + web
 COPY ./setup/traccar.xml ./conf/traccar.xml
 COPY --from=build-web /web/traccar-web/build ./web
 
