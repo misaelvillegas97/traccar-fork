@@ -1,15 +1,28 @@
-# ---- build server ----
+# ---- build server (+ fetch submodules) ----
 FROM eclipse-temurin:21-jdk AS build-server
 WORKDIR /app
 COPY . .
+
+# Needed if Railway/Docker context includes .git; ensures traccar-web submodule is present
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && git submodule update --init --recursive
+
 RUN ./gradlew assemble
 
 # ---- build web (modern) ----
 FROM node:20-alpine AS build-web
 WORKDIR /web
-COPY ./traccar-web ./traccar-web
+
+# Copy the (now populated) submodule content from the previous stage
+COPY --from=build-server /app/traccar-web ./traccar-web
+
 WORKDIR /web/traccar-web
-RUN npm ci
+
+# If package-lock.json exists, ci is fine; otherwise fallback to install
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
 RUN npm run build
 
 # ---- runtime ----
@@ -19,7 +32,7 @@ WORKDIR /opt/traccar
 COPY --from=build-server /app/target/tracker-server.jar ./tracker-server.jar
 COPY ./setup/traccar.xml ./conf/traccar.xml
 
-# Copia el build del frontend (Vite suele generar "dist")
+# Web build output (adjust if your build outputs to a different folder)
 COPY --from=build-web /web/traccar-web/dist ./web
 
 EXPOSE 8082
