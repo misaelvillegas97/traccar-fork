@@ -1,6 +1,3 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.alpine"
-
-[deploy]
-startCommand = "/opt/traccar/jre/bin/java -Dconfig.override=/opt/traccar/conf/traccar-env.xml -cp \"/opt/traccar/tracker-server.jar:/opt/traccar/lib/*\" org.traccar.Main /opt/traccar/conf/traccar.xml"
