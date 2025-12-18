@@ -1,39 +1,57 @@
-# ---- build server (+ fetch submodules) ----
+############################
+# 1) build server (Gradle)
+############################
 FROM eclipse-temurin:21-jdk AS build-server
-WORKDIR /app
+WORKDIR /src
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git ca-certificates dos2unix \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY . .
 
-# Needed if Railway/Docker context includes .git; ensures traccar-web submodule is present
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends git ca-certificates \
-  && rm -rf /var/lib/apt/lists/* \
-  && git submodule update --init --recursive
+# Windows suele dejar CRLF y sin bit ejecutable
+RUN chmod +x gradlew || true \
+  && dos2unix gradlew || true
 
-RUN ./gradlew assemble
+RUN if [ -d /src/.git ]; then git submodule update --init --recursive; else echo "No .git in build context; skipping submodules"; fi
+RUN dos2unix $(find src -type f \( -name "*.java" -o -name "*.xml" -o -name "*.gradle" -o -name "*.properties" \))
+RUN /src/gradlew --no-daemon clean build -x test
 
-# ---- build web (modern) ----
-FROM node:20-alpine AS build-web
-WORKDIR /web
 
-# Copy the (now populated) submodule content from the previous stage
-COPY --from=build-server /app/traccar-web ./traccar-web
 
+############################
+# 2) build web (Node 22)
+############################
+FROM node:22-alpine AS build-web
 WORKDIR /web/traccar-web
 
-# If package-lock.json exists, ci is fine; otherwise fallback to install
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Copiamos el submódulo ya materializado desde el stage anterior
+COPY --from=build-server /src/traccar-web /web/traccar-web
 
-RUN npm run build
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi \
+  && npm run build
 
-# ---- runtime ----
+
+############################
+# 3) runtime (1 solo OS final)
+############################
 FROM eclipse-temurin:21-jre
 WORKDIR /opt/traccar
 
-COPY --from=build-server /app/target/tracker-server.jar ./tracker-server.jar
+# (Opcional) variables típicas
+ENV JAVA_OPTS=""
+
+# Jar del server
+COPY --from=build-server /src/target/tracker-server.jar ./tracker-server.jar
+
+# Config (asegúrate que exista en tu repo)
 COPY ./setup/traccar.xml ./conf/traccar.xml
 
-# Web build output (adjust if your build outputs to a different folder)
-COPY --from=build-web /web/traccar-web/dist ./web
+# Frontend build (en Traccar Web moderno suele ser dist/)
+COPY --from=build-web /web/traccar-web/build ./web
 
 EXPOSE 8082
-CMD ["java","-jar","tracker-server.jar","conf/traccar.xml"]
+
+# Permite sobreescribir JAVA_OPTS al correr el contenedor
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar tracker-server.jar conf/traccar.xml"]
