@@ -48,10 +48,11 @@ RUN mkdir -p /opt/traccar/jre/bin \
   && ln -sf ${JAVA_HOME}/bin/java /opt/traccar/jre/bin/java
 
 COPY --from=build-server /src/target/tracker-server.jar ./tracker-server.jar
+COPY --from=build-server /src/target/lib ./lib
 
 COPY ./setup/traccar.xml ./conf/traccar.xml
-
 COPY --from=build-web /web/traccar-web/build ./web
 
 EXPOSE 8082
+
 ENTRYPOINT ["sh","-c","java $JAVA_OPTS -cp \"tracker-server.jar:lib/*\" org.traccar.Main conf/traccar.xml"]
