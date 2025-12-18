@@ -54,4 +54,4 @@ COPY ./setup/traccar.xml ./conf/traccar.xml
 COPY --from=build-web /web/traccar-web/build ./web
 
 EXPOSE 8082
-ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar tracker-server.jar conf/traccar.xml"]
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -cp \"tracker-server.jar:lib/*\" org.traccar.Main conf/traccar.xml"]
