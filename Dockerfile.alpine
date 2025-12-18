@@ -1,31 +1,26 @@
-FROM eclipse-temurin:21-alpine AS build
+# ---- build server ----
+FROM eclipse-temurin:21-jdk AS build-server
 WORKDIR /app
 COPY . .
-RUN sed -i 's/\r$//' gradlew && chmod +x gradlew && ./gradlew assemble && \
-    mkdir -p traccar-web/build
+RUN ./gradlew assemble
 
-FROM eclipse-temurin:21-alpine AS jdk
-RUN jlink --module-path $JAVA_HOME/jmods \
-    --add-modules java.se,jdk.charsets,jdk.crypto.ec,jdk.unsupported \
-    --strip-debug --no-header-files --no-man-pages --compress=2 --output /jre
+# ---- build web (modern) ----
+FROM node:20-alpine AS build-web
+WORKDIR /web
+COPY ./traccar-web ./traccar-web
+WORKDIR /web/traccar-web
+RUN npm ci
+RUN npm run build
 
-FROM alpine:3.22
-COPY --from=build /app/target/tracker-server.jar /opt/traccar/tracker-server.jar
-COPY --from=build /app/target/lib /opt/traccar/lib
-COPY --from=build /app/schema /opt/traccar/schema
-COPY --from=build /app/templates /opt/traccar/templates
-COPY --from=build /app/traccar-web/build /opt/traccar/web
-COPY --from=build /app/setup/traccar.xml /opt/traccar/conf/traccar.xml
-COPY --from=jdk /jre /opt/traccar/jre
-
-# Crear directorios necesarios
-RUN mkdir -p /opt/traccar/data /opt/traccar/logs
-
+# ---- runtime ----
+FROM eclipse-temurin:21-jre
 WORKDIR /opt/traccar
 
-# Configurar variables de entorno por defecto
-ENV CONFIG_USE_ENVIRONMENT_VARIABLES=true
-ENV DATABASE_DRIVER=org.postgresql.Driver
+COPY --from=build-server /app/target/tracker-server.jar ./tracker-server.jar
+COPY ./setup/traccar.xml ./conf/traccar.xml
 
-ENTRYPOINT ["/opt/traccar/jre/bin/java"]
-CMD ["-jar", "tracker-server.jar", "conf/traccar.xml"]
+# Copia el build del frontend (Vite suele generar "dist")
+COPY --from=build-web /web/traccar-web/dist ./web
+
+EXPOSE 8082
+CMD ["java","-jar","tracker-server.jar","conf/traccar.xml"]
