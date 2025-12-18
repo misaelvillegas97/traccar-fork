@@ -41,6 +41,11 @@ FROM eclipse-temurin:21-jre
 WORKDIR /opt/traccar
 
 ENV JAVA_OPTS=""
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+RUN mkdir -p /opt/traccar/jre/bin \
+  && ln -sf ${JAVA_HOME}/bin/java /opt/traccar/jre/bin/java
 
 COPY --from=build-server /src/target/tracker-server.jar ./tracker-server.jar
 
@@ -49,6 +54,4 @@ COPY ./setup/traccar.xml ./conf/traccar.xml
 COPY --from=build-web /web/traccar-web/build ./web
 
 EXPOSE 8082
-ENTRYPOINT ["/opt/traccar/jre/bin/java"]
-CMD ["-jar", "tracker-server.jar", "conf/traccar.xml"]
-# ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar tracker-server.jar conf/traccar.xml"]
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar tracker-server.jar conf/traccar.xml"]
