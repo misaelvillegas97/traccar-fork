@@ -10,7 +10,6 @@ RUN apt-get update \
 
 COPY . .
 
-# Windows suele dejar CRLF y sin bit ejecutable
 RUN chmod +x gradlew || true \
   && dos2unix gradlew || true
 
@@ -24,13 +23,15 @@ RUN /src/gradlew --no-daemon clean build -x test
 # 2) build web (Node 22)
 ############################
 FROM node:22-alpine AS build-web
+WORKDIR /web
+
+RUN apk add --no-cache git
+
+RUN git clone --depth 1 https://github.com/misaelvillegas97/traccar-web.git ./traccar-web
+
 WORKDIR /web/traccar-web
-
-# Copiamos el submódulo ya materializado desde el stage anterior
-COPY --from=build-server /src/traccar-web /web/traccar-web
-
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi \
-  && npm run build
+RUN npm ci
+RUN npm run build
 
 
 ############################
@@ -39,19 +40,14 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi \
 FROM eclipse-temurin:21-jre
 WORKDIR /opt/traccar
 
-# (Opcional) variables típicas
 ENV JAVA_OPTS=""
 
-# Jar del server
 COPY --from=build-server /src/target/tracker-server.jar ./tracker-server.jar
 
-# Config (asegúrate que exista en tu repo)
 COPY ./setup/traccar.xml ./conf/traccar.xml
 
-# Frontend build (en Traccar Web moderno suele ser dist/)
 COPY --from=build-web /web/traccar-web/build ./web
 
 EXPOSE 8082
 
-# Permite sobreescribir JAVA_OPTS al correr el contenedor
 ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar tracker-server.jar conf/traccar.xml"]
