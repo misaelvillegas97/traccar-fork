@@ -1,0 +1,66 @@
+############################
+# 1) build server (Gradle)
+############################
+FROM eclipse-temurin:21-jdk AS build-server
+WORKDIR /src
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git ca-certificates dos2unix \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY . .
+
+RUN chmod +x gradlew || true \
+  && dos2unix gradlew || true
+
+RUN if [ -d /src/.git ]; then git submodule update --init --recursive; else echo "No .git in build context; skipping submodules"; fi
+
+RUN dos2unix $(find /src -type f \( -name "*.java" -o -name "*.xml" -o -name "*.gradle" -o -name "*.properties" \) ) || true
+
+RUN /src/gradlew --no-daemon clean build -x test
+
+
+############################
+# 2) build web (Node 22)
+############################
+FROM node:22-alpine AS build-web
+WORKDIR /web
+
+RUN apk add --no-cache git
+RUN git clone --depth 1 https://github.com/misaelvillegas97/traccar-web.git ./traccar-web
+
+WORKDIR /web/traccar-web
+RUN npm ci
+RUN npm run build
+
+
+############################
+# 3) runtime
+############################
+FROM eclipse-temurin:21-jre
+WORKDIR /opt/traccar
+
+ENV JAVA_OPTS=""
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+RUN mkdir -p /opt/traccar/jre/bin \
+  && ln -sf ${JAVA_HOME}/bin/java /opt/traccar/jre/bin/java
+
+RUN mkdir -p /opt/traccar/conf
+
+# App + deps
+COPY --from=build-server /src/target/tracker-server.jar ./tracker-server.jar
+COPY --from=build-server /src/target/lib ./lib
+
+COPY --from=build-server /src/schema ./schema
+
+COPY --from=build-server /src/templates ./templates
+
+# Config + web
+COPY ./setup/traccar.xml ./conf/traccar.xml
+COPY --from=build-web /web/traccar-web/build ./web
+
+EXPOSE 8082
+
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -cp \"tracker-server.jar:lib/*\" org.traccar.Main conf/traccar.xml"]
