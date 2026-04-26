@@ -1,50 +1,43 @@
+name: traccar-test
 services:
-
   database:
-    image: timescale/timescaledb:latest-pg16
+    image: 'timescale/timescaledb:latest-pg16'
     restart: unless-stopped
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: traccar
       POSTGRES_USER: traccar
-      POSTGRES_PASSWORD: traccar
-      TIMESCALEDB_TELEMETRY: "off"
+      POSTGRES_PASSWORD: password
+      TIMESCALEDB_TELEMETRY: 'off'
     volumes:
-      - database-data:/var/lib/postgresql/data
-
-#  traccar:
-#    image: traccar/traccar:latest
-#    restart: unless-stopped
-#    depends_on:
-#      - database
-#    environment:
-#      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
-#      DATABASE_DRIVER: org.postgresql.Driver
-#      DATABASE_URL: jdbc:postgresql://database:5432/traccar
-#      DATABASE_USER: traccar
-#      DATABASE_PASSWORD: traccar
-#    healthcheck:
-#      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8082/api/health" ]
-#      interval: 2m
-#      timeout: 5s
-#      start_period: 1h
-#      retries: 3
-#    ports:
-#      - "8082:8082"
-#      - "5000-5500:5000-5500"
-#    volumes:
-#      - /opt/traccar/logs:/opt/traccar/logs
-
+      - 'database-data:/var/lib/postgresql/data'
+  traccar:
+    image: 'ghcr.io/misaelvillegas97/traccar-fork:latest'
+    restart: unless-stopped
+    depends_on:
+      - database
+    environment:
+      CONFIG_USE_ENVIRONMENT_VARIABLES: true
+      DATABASE_DRIVER: org.postgresql.Driver
+      DATABASE_PASSWORD: password
+      DATABASE_URL: 'jdbc:postgresql://database:5432/traccar'
+      DATABASE_USER: traccar
+      WEB_PORT: 8082
+      LOGGER_CONSOLE: true
+    labels:
+      - autoheal=true
+    network_mode: host
+    volumes:
+      - '/opt/traccar/logs:/opt/traccar/logs'
+      - '/opt/traccar/data:/opt/traccar/data'
+      - '/opt/traccar/conf:/opt/traccar/conf'
   autoheal:
-    image: willfarrell/autoheal:latest
+    image: 'willfarrell/autoheal:latest'
     restart: always
     environment:
-      AUTOHEAL_CONTAINER_LABEL: all
+      AUTOHEAL_CONTAINER_LABEL: autoheal
       AUTOHEAL_INTERVAL: 60
       AUTOHEAL_START_PERIOD: 3600
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
 volumes:
-  database-data:
+  database-data: null

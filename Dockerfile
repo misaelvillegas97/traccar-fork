@@ -13,8 +13,6 @@ COPY . .
 RUN chmod +x gradlew || true \
   && dos2unix gradlew || true
 
-RUN if [ -d /src/.git ]; then git submodule update --init --recursive; else echo "No .git in build context; skipping submodules"; fi
-
 RUN dos2unix $(find /src -type f \( -name "*.java" -o -name "*.xml" -o -name "*.gradle" -o -name "*.properties" \) ) || true
 
 RUN /src/gradlew --no-daemon clean build -x test
